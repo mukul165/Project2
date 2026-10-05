@@ -31,3 +31,37 @@ module "vpc" {
 
   enable_flow_logs = false
 }
+module "gke" {
+  source = "../../modules/gke"
+
+  project_id   = var.project_id
+  region       = var.region
+  cluster_name = "prj2-dev"
+
+  network_id          = module.vpc.network_id
+  subnetwork_id       = module.vpc.subnet_ids["dev"]
+  pods_range_name     = module.vpc.pods_range_names["dev"]
+  services_range_name = module.vpc.services_range_names["dev"]
+  master_ipv4_cidr_block = "172.16.1.0/28"
+
+  # TODO: replace with YOUR actual public IP (run: curl ifconfig.me) so you
+  # can reach the control plane from your machine. Add your CI runner's IP
+  # later too. Without an entry here, kubectl will be refused by the API
+  # server even with valid credentials.
+  master_authorized_networks = [
+    {
+      cidr_block   = "10.0.1.2/32"
+      display_name = "my-workstation"
+    }
+  ]
+
+  node_pools = {
+    default-pool = {
+      machine_type   = "e2-medium"
+      min_node_count = 1
+      max_node_count = 3
+      disk_size_gb   = 50
+      preemptible    = true
+    }
+  }
+}
